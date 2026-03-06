@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrafficFlow Ultimate - Gestor Completo de Tr&aacute;fego & ROI</title>
+    <meta name="theme-color" content="#0f172a">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <link rel="stylesheet" href="./style.css">
+    <script type="module" src="./main.js"></script>
+</head>
+
+<body>
+    <!-- Toast Container -->
+    <div id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- Confirm Dialog Container -->
+    <div id="confirmContainer"></div>
+
+    <!-- Smart Alerts Container -->
+    <div id="smartAlertsContainer"
+        style="position: fixed; top: 90px; right: 20px; width: 320px; max-height: 400px; overflow-y: auto; z-index: 9998; pointer-events: all;">
+    </div>
+
+    <div class="container">
+        <!-- SIDEBAR -->
+        <nav class="sidebar" role="navigation" aria-label="Menu principal">
+            <div class="sidebar-header">
+                <div class="user-profile-area" onclick="openModal('profileModal')" title="Editar perfil"
+                    aria-label="Editar perfil">
+                    <div class="user-avatar" id="sidebarAvatar">
+                        <span id="sidebarAvatarInitial">TF</span>
+                    </div>
+                    <div class="user-info-text">
+                        <div class="user-name-display" id="sidebarUserName" data-brand-name>TrafficFlow</div>
+                        <div class="user-role-display" id="sidebarUserRole">Gestor de Tr&aacute;fego</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-menu" role="menubar">
+                <div class="nav-item active" id="navHome" onclick="goToHome()" role="menuitem" tabindex="0"
+                    aria-label="Ir para Empresas">
+                    <i class="fas fa-home" aria-hidden="true"></i>
+                    <span>Empresas</span>
+                </div>
+                <div class="nav-item eagle-nav" id="navEagle" onclick="showEagleDashboard()" role="menuitem"
+                    tabindex="0" aria-label="Vis&atilde;o de &iacute;?guia - Dashboard Comparativo">
+                    <i class="fas fa-eye" aria-hidden="true"></i>
+                    <span>Vis&atilde;o de &iacute;?guia</span>
+                </div>
+                <div class="nav-item" onclick="openReportPanel()" role="menuitem" tabindex="0"
+                    aria-label="Abrir Relat&oacute;rios">
+                    <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                    <span>Relat&oacute;rios</span>
+                </div>
+                <div class="nav-item" onclick="openModal('auditModal')" role="menuitem" tabindex="0"
+                    aria-label="Abrir Hist&oacute;rico de Altera&ccedil;&iacute;?es">
+                    <i class="fas fa-history" aria-hidden="true"></i>
+                    <span>Hist&oacute;rico</span>
+                </div>
+                <div class="nav-item" onclick="exportData()" role="menuitem" tabindex="0"
+                    aria-label="Fazer Backup dos dados">
+                    <i class="fas fa-download" aria-hidden="true"></i>
+                    <span>Backup</span>
+                </div>
+                <div class="nav-item" onclick="document.getElementById('importInput').click()" role="menuitem"
+                    tabindex="0" aria-label="Restaurar dados de backup">
+                    <i class="fas fa-upload" aria-hidden="true"></i>
+                    <span>Restaurar</span>
+                </div>
+            </div>
+
+            <input type="file" id="importInput" class="hidden" accept=".json" onchange="importData(event)"
+                aria-label="Importar arquivo de backup">
+        </nav>
+
+        <!-- MODAIS GLOBAIS -->
+
+
+        <!-- Modal Perfil do Usu&aacute;rio -->
+        <div class="modal" id="profileModal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+            <div class="modal-content" style="max-width: 420px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="profileModalTitle"><i class="fas fa-user-circle"
+                            style="color: var(--primary);"></i> Perfil do Usu&aacute;rio</div>
+                    <button class="modal-close" onclick="closeModal('profileModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+
+                <div class="avatar-upload-area">
+                    <div class="avatar-large" id="avatarPreviewLarge"
+                        onclick="document.getElementById('profileAvatarInput').click()"
+                        title="Clique para alterar foto">
+                        <span id="avatarPreviewInitial" style="pointer-events:none;"></span>
+                    </div>
+                    <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;"
+                        onchange="handleProfileAvatarUpload(event)">
+                    <button class="btn btn-secondary btn-sm"
+                        onclick="document.getElementById('profileAvatarInput').click()">
+                        <i class="fas fa-camera"></i> Alterar Foto
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="removeProfileAvatar()" id="btnRemoveAvatar"
+                        style="display:none;">
+                        <i class="fas fa-trash"></i> Remover
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="profileNameInput">Seu Nome</label>
+                    <input type="text" class="form-input" id="profileNameInput" placeholder="Ex: Jo&atilde;o Silva">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="profileRoleInput">Cargo / Fun&ccedil;&atilde;o</label>
+                    <input type="text" class="form-input" id="profileRoleInput"
+                        placeholder="Ex: Gestor de Tr&aacute;fego">
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                    <button class="btn btn-primary" style="flex:1;" onclick="saveUserProfile()">
+                        <i class="fas fa-save"></i> Salvar Perfil
+                    </button>
+                    <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('profileModal')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Relat&oacute;rios -->
+        <div class="modal" id="reportModal" role="dialog" aria-modal="true" aria-labelledby="reportModalTitle">
+            <div class="modal-content" style="max-width: 520px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="reportModalTitle">Calend&aacute;rio de Relat&oacute;rios</div>
+                    <button class="modal-close" onclick="closeModal('reportModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div class="branches-section">
+                    <div class="branches-label">Filiais Cadastradas</div>
+                    <div id="branchesList" class="branches-list"></div>
+                </div>
+                <div class="calendar-section" style="margin-top: 20px;">
+                    <div class="calendar-title">Distribui&ccedil;&atilde;o Semanal</div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                    <div class="report-list" id="reportList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Compartilhar -->
+        <div class="modal" id="shareModal" role="dialog" aria-modal="true" aria-labelledby="shareModalTitle">
+            <div class="modal-content" style="max-width: 400px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="shareModalTitle">Compartilhar Relat&oacute;rio</div>
+                    <button class="modal-close" onclick="closeModal('shareModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="shareViaWhatsApp()"
+                        style="flex-direction: column; padding: 20px; height: 80px; justify-content: center;">
+                        <i class="fab fa-whatsapp" style="font-size: 22px; margin-bottom: 6px;" aria-hidden="true"></i>
+                        <span>WhatsApp</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="shareViaEmail()"
+                        style="flex-direction: column; padding: 20px; height: 80px; justify-content: center;">
+                        <i class="fas fa-envelope" style="font-size: 22px; margin-bottom: 6px;" aria-hidden="true"></i>
+                        <span>E-mail</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Insights IA -->
+        <div class="modal" id="insightsModal" role="dialog" aria-modal="true" aria-labelledby="insightsModalTitle">
+            <div class="modal-content" style="max-width: 620px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="insightsModalTitle"><i class="fas fa-lightbulb"
+                            style="color: var(--warning);"></i> Insights Inteligentes</div>
+                    <button class="modal-close" onclick="closeModal('insightsModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div id="insightsContainer" style="max-height: 420px; overflow-y: auto;"></div>
+            </div>
+        </div>
+
+        <!-- Modal Notifica&ccedil;&iacute;?es -->
+        <div class="modal" id="notificationsModal" role="dialog" aria-modal="true" aria-labelledby="notifModalTitle">
+            <div class="modal-content" style="max-width: 520px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="notifModalTitle"><i class="fas fa-bell"
+                            style="color: var(--primary);"></i> Centro de Notifica&ccedil;&iacute;?es</div>
+                    <button class="modal-close" onclick="closeModal('notificationsModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+                    <button class="btn btn-sm btn-secondary" onclick="markAllNotificationsRead()">
+                        <i class="fas fa-check-double"></i> Marcar todas como lidas
+                    </button>
+                </div>
+                <div id="notificationsContainer" style="max-height: 420px; overflow-y: auto;"></div>
+            </div>
+        </div>
+
+        <!-- Modal Configura&ccedil;&iacute;?es -->
+        <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+            <div class="modal-content" style="max-width: 520px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="settingsModalTitle"><i class="fas fa-cog"
+                            style="color: var(--primary);"></i> Configura&ccedil;&iacute;?es</div>
+                    <button class="modal-close" onclick="closeModal('settingsModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchSettingsTab('whitelabel', this)">White-Label</button>
+                    <button class="tab-btn" onclick="switchSettingsTab('dashboard', this)">Dashboard</button>
+                    <button class="tab-btn" onclick="switchSettingsTab('notifications', this)">Alertas</button>
+                </div>
+                <div id="settingsTabWhitelabel">
+                    <div class="form-group">
+                        <label class="form-label" for="brandName">Nome da Ag&iacute;?ncia/Marca</label>
+                        <input type="text" id="brandName" class="form-input" placeholder="TrafficFlow Ultimate">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="logoUrl">URL da Logo</label>
+                        <input type="url" id="logoUrl" class="form-input" placeholder="https://exemplo.com/logo.png">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="primaryColor">Cor Prim&aacute;ria</label>
+                        <input type="color" id="primaryColor" value="#00d4ff"
+                            style="width: 100%; height: 42px; border: 1.5px solid var(--dark-border-light); border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.05);">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveWhiteLabelSettings()" style="width: 100%;">
+                        <i class="fas fa-save"></i> Salvar Configura&ccedil;&iacute;?es
+                    </button>
+                </div>
+                <div id="settingsTabDashboard" class="hidden">
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Personalize quais
+                        KPIs aparecem no dashboard da filial e sua ordem.</p>
+                    <div id="kpiOrderList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    <button class="btn btn-primary" onclick="saveKpiOrder()" style="width: 100%; margin-top: 16px;">
+                        <i class="fas fa-save"></i> Salvar Ordem
+                    </button>
+                </div>
+                <div id="settingsTabNotifications" class="hidden">
+                    <div class="form-group">
+                        <label class="form-label" for="alertRoiThreshold">Alertar quando ROI abaixo de (%)</label>
+                        <input type="number" id="alertRoiThreshold" class="form-input" placeholder="0" min="-100"
+                            max="1000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="alertBudgetThreshold">Alertar quando or&ccedil;amento acima de
+                            (%)</label>
+                        <input type="number" id="alertBudgetThreshold" class="form-input" placeholder="90" min="1"
+                            max="100">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="alertBalanceDays">Alertar quando saldo &lt; X dias</label>
+                        <input type="number" id="alertBalanceDays" class="form-input" placeholder="7" min="1" max="90">
+                    </div>
+                    <button class="btn btn-primary" onclick="saveAlertSettings()" style="width: 100%;">
+                        <i class="fas fa-save"></i> Salvar Configura&ccedil;&iacute;?es de Alertas
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Relat&oacute;rio Premium -->
+        <div class="modal" id="premiumReportModal" role="dialog" aria-modal="true" aria-labelledby="premiumReportTitle">
+            <div class="modal-content" style="max-width: 720px; max-height: 85vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <div class="modal-title" id="premiumReportTitle"><i class="fas fa-chart-bar"
+                            style="color: var(--primary);"></i> Relat&oacute;rio Executivo</div>
+                    <button class="modal-close" onclick="closeModal('premiumReportModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div id="premiumReportContent"></div>
+                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="downloadReportPDF()">
+                        <i class="fas fa-file-pdf"></i> Baixar PDF
+                    </button>
+                    <button class="btn btn-success" onclick="downloadReportCSV()">
+                        <i class="fas fa-file-csv"></i> Exportar CSV
+                    </button>
+                    <button class="btn btn-warning" onclick="downloadReportExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button class="btn btn-share" onclick="openModal('shareModal')">
+                        <i class="fas fa-share-alt"></i> Compartilhar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Audit Log -->
+        <div class="modal" id="auditModal" role="dialog" aria-modal="true" aria-labelledby="auditModalTitle">
+            <div class="modal-content" style="max-width: 620px; max-height: 85vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <div class="modal-title" id="auditModalTitle"><i class="fas fa-history"
+                            style="color: var(--purple);"></i> Hist&oacute;rico de Altera&ccedil;&iacute;?es</div>
+                    <button class="modal-close" onclick="closeModal('auditModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="search" class="search-input" id="auditSearch"
+                        placeholder="Buscar no hist&oacute;rico..." oninput="filterAuditLog(this.value)"
+                        aria-label="Buscar no hist&oacute;rico">
+                </div>
+                <div id="auditContainer"
+                    style="max-height: 420px; overflow-y: auto; border: 1px solid var(--dark-border); border-radius: 10px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Or&ccedil;amento -->
+        <div class="modal" id="budgetModal" role="dialog" aria-modal="true" aria-labelledby="budgetModalTitle">
+            <div class="modal-content" style="max-width: 520px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="budgetModalTitle"><i class="fas fa-wallet"
+                            style="color: var(--warning);"></i> Gest&atilde;o de Or&ccedil;amento</div>
+                    <button class="modal-close" onclick="closeModal('budgetModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div id="budgetContent"></div>
+            </div>
+        </div>
+
+        <!-- Modal Previs&atilde;o ROI -->
+        <div class="modal" id="roiForecastModal" role="dialog" aria-modal="true" aria-labelledby="roiModalTitle">
+            <div class="modal-content" style="max-width: 580px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="roiModalTitle"><i class="fas fa-chart-line"
+                            style="color: var(--purple);"></i> Previs&atilde;o de ROI</div>
+                    <button class="modal-close" onclick="closeModal('roiForecastModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div id="roiForecastContent"></div>
+            </div>
+        </div>
+
+        <!-- Modal Adicionar/Editar -->
+        <div class="modal" id="addModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="modalTitle">Nova Empresa</div>
+                    <button class="modal-close" onclick="closeModal('addModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required" id="field1Label" for="field1Input">Nome da Empresa</label>
+                    <div class="form-input-wrapper">
+                        <input type="text" class="form-input" id="field1Input" placeholder="Ex: Rede de Academias X"
+                            autocomplete="off" oninput="validateField1()">
+                        <span class="form-input-icon" id="field1Icon"></span>
+                    </div>
+                    <div class="form-error hidden" id="field1Error"><i class="fas fa-exclamation-circle"></i>
+                        <span></span>
+                    </div>
+                </div>
+                <div class="form-group" id="field2Group">
+                    <label class="form-label" id="field2Label" for="field2Input">Budget Mensal (R$)</label>
+                    <input type="number" class="form-input" id="field2Input" placeholder="10000" min="0" step="0.01">
+                </div>
+                <div class="form-group" id="logoGroup" style="display: none;">
+                    <label class="form-label">Logo da Empresa</label>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div id="logoPreview"
+                            style="width: 56px; height: 56px; border-radius: 12px; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            <i class="fas fa-image" style="color: var(--text-tertiary); font-size: 20px;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <input type="file" id="companyLogoInput" accept="image/*" style="display: none;"
+                                onchange="handleLogoUpload(event)">
+                            <button type="button" class="btn btn-secondary"
+                                onclick="document.getElementById('companyLogoInput').click()" style="width: 100%;">
+                                <i class="fas fa-upload"></i> Upload Logo
+                            </button>
+                            <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">PNG, JPG ou SVG.
+                                Max 200KB</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="submitAdd()" id="addSubmitBtn">
+                        <i class="fas fa-check"></i> <span id="addSubmitText">Criar</span>
+                    </button>
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="closeModal('addModal')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Campanha -->
+        <div class="modal" id="campaignModal" role="dialog" aria-modal="true" aria-labelledby="campaignModalTitle">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="campaignModalTitle">Nova Campanha</div>
+                    <button class="modal-close" onclick="closeModal('campaignModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required" for="campaignNameInput">Nome da Campanha</label>
+                    <div class="form-input-wrapper">
+                        <input type="text" class="form-input" id="campaignNameInput"
+                            placeholder="Ex: Google Ads - Ver&atilde;o 2026" oninput="validateCampaignName()">
+                        <span class="form-input-icon" id="campaignNameIcon"></span>
+                    </div>
+                    <div class="form-error hidden" id="campaignNameError"><i class="fas fa-exclamation-circle"></i>
+                        <span></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Objetivo</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        <button class="filter-btn active" onclick="setCampaignPurpose('vendas')" id="purposeVendas"
+                            aria-pressed="true">???? Vendas</button>
+                        <button class="filter-btn" onclick="setCampaignPurpose('leads')" id="purposeLeads"
+                            aria-pressed="false">???? Leads</button>
+                        <button class="filter-btn" onclick="setCampaignPurpose('marca')" id="purposeMarca"
+                            aria-pressed="false">???? Marca</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="campaignGroupSelect">Grupo/Hierarquia</label>
+                    <select class="form-input" id="campaignGroupSelect" aria-label="Selecionar grupo de campanha">
+                        <option value="">Sem grupo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required" for="campaignSpendInput">Gasto Di&aacute;rio (R$)</label>
+                    <div class="form-input-wrapper">
+                        <input type="number" class="form-input" id="campaignSpendInput" placeholder="500" min="0"
+                            step="0.01" oninput="validateCampaignSpend()">
+                        <span class="form-input-icon" id="campaignSpendIcon"></span>
+                    </div>
+                    <div class="form-error hidden" id="campaignSpendError"><i class="fas fa-exclamation-circle"></i>
+                        <span></span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="submitCampaign()">
+                        <i class="fas fa-check"></i> Criar Campanha
+                    </button>
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="closeModal('campaignModal')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Grupo de Campanha -->
+        <div class="modal" id="campaignGroupModal" role="dialog" aria-modal="true"
+            aria-labelledby="campaignGroupModalTitle">
+            <div class="modal-content" style="max-width: 420px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="campaignGroupModalTitle">Novo Grupo de Campanhas</div>
+                    <button class="modal-close" onclick="closeModal('campaignGroupModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required" for="groupNameInput">Nome do Grupo</label>
+                    <input type="text" class="form-input" id="groupNameInput"
+                        placeholder="Ex: Campanhas de Ver&atilde;o">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="groupObjectiveInput">Objetivo do Grupo</label>
+                    <input type="text" class="form-input" id="groupObjectiveInput"
+                        placeholder="Ex: Aumentar vendas em 30%">
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button class="btn btn-primary" style="flex: 1;" onclick="submitCampaignGroup()">
+                        <i class="fas fa-check"></i> Criar Grupo
+                    </button>
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="closeModal('campaignGroupModal')">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Venda (com steps) -->
+        <div class="modal" id="saleModal" role="dialog" aria-modal="true" aria-labelledby="saleModalTitle">
+            <div class="modal-content" style="max-width: 560px;">
+                <div class="modal-header">
+                    <div class="modal-title" id="saleModalTitle">???? Registrar Venda</div>
+                    <button class="modal-close" onclick="closeModal('saleModal')" aria-label="Fechar modal"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div id="saleEditId" class="hidden"></div>
+
+                <!-- Steps Progress Bar -->
+                <div class="sale-steps-header">
+                    <div class="sale-steps-bar">
+                        <div class="sale-step-item active" id="step-indicator-1">
+                            <div class="sale-step-circle"><i class="fas fa-user"></i></div>
+                            <div class="sale-step-label">Cliente</div>
+                        </div>
+                        <div class="sale-step-item" id="step-indicator-2">
+                            <div class="sale-step-circle"><i class="fas fa-dollar-sign"></i></div>
+                            <div class="sale-step-label">Valores</div>
+                        </div>
+                        <div class="sale-step-item" id="step-indicator-3">
+                            <div class="sale-step-circle"><i class="fas fa-list-alt"></i></div>
+                            <div class="sale-step-label">Detalhes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 1: Cliente -->
+                <div class="sale-step-panel active" id="sale-step-panel-1">
+                    <div class="form-group">
+                        <label class="form-label required" for="clientNameInput">Nome do Cliente</label>
+                        <div class="form-input-wrapper">
+                            <input type="text" class="form-input" id="clientNameInput"
+                                placeholder="Ex: Jo&atilde;o Silva"
+                                oninput="validateSaleField('clientNameInput','clientNameError','clientNameIcon')">
+                            <span class="form-input-icon" id="clientNameIcon"></span>
+                        </div>
+                        <div class="form-error hidden" id="clientNameError"><i class="fas fa-exclamation-circle"></i>
+                            <span></span>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label class="form-label required" for="saleDateInput">Data da Venda</label>
+                            <input type="date" class="form-input" id="saleDateInput">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="saleProductInput">Produto/Servi&ccedil;o</label>
+                            <input type="text" class="form-input" id="saleProductInput" placeholder="Ex: Plano Premium">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="saleChannelInput">Canal de Aquisi&ccedil;&atilde;o</label>
+                        <select class="form-input" id="saleChannelInput">
+                            <option value="">N&atilde;o informado</option>
+                            <option value="google_ads">Google Ads</option>
+                            <option value="meta_ads">Meta Ads</option>
+                            <option value="tiktok_ads">TikTok Ads</option>
+                            <option value="organico">Org&iacute;?nico</option>
+                            <option value="indicacao">Indica&ccedil;&atilde;o</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="sale-step-nav">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('saleModal')">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="goToSaleStep(2)">
+                            Pr&oacute;ximo <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Valores -->
+                <div class="sale-step-panel" id="sale-step-panel-2">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label class="form-label required" for="saleValueInput">Valor da Venda (R$)</label>
+                            <div class="form-input-wrapper">
+                                <input type="text" class="form-input" id="saleValueInput" placeholder="R$ 0,00"
+                                    data-currency="true">
+                                <span class="form-input-icon" id="saleValueIcon"></span>
+                            </div>
+                            <div class="form-error hidden" id="saleValueError"><i class="fas fa-exclamation-circle"></i>
+                                <span></span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="adhesionValueInput">Ades&atilde;o (R$)</label>
+                            <input type="text" class="form-input" id="adhesionValueInput" placeholder="R$ 0,00"
+                                data-currency="true">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="commissionValueInput">Comiss&atilde;o (R$)</label>
+                        <input type="text" class="form-input" id="commissionValueInput" placeholder="R$ 0,00"
+                            data-currency="true">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tem Parcelamento?</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <button class="filter-btn active" onclick="setHasInstallment(false)" id="noInstallment"
+                                aria-pressed="true">??? N&atilde;o</button>
+                            <button class="filter-btn" onclick="setHasInstallment(true)" id="yesInstallment"
+                                aria-pressed="false">??? Sim</button>
+                        </div>
+                    </div>
+                    <div id="installmentDetailsGroup" class="hidden">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="form-group">
+                                <label class="form-label" for="installmentsInput">N&iacute;?mero de Parcelas</label>
+                                <input type="number" class="form-input" id="installmentsInput" placeholder="12" min="2"
+                                    max="60">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label required" for="installmentValueInput">Valor da Parcela
+                                    (R$)</label>
+                                <input type="text" class="form-input" id="installmentValueInput" placeholder="R$ 0,00"
+                                    data-currency="true">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sale-step-nav">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="goToSaleStep(1)">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="goToSaleStep(3)">
+                            Pr&oacute;ximo <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Detalhes -->
+                <div class="sale-step-panel" id="sale-step-panel-3">
+                    <div class="form-group">
+                        <label class="form-label" for="saleNotesInput">Observa&ccedil;&iacute;?es</label>
+                        <textarea class="form-input" id="saleNotesInput" placeholder="Notas adicionais sobre a venda..."
+                            rows="3" style="resize: vertical;"></textarea>
+                    </div>
+
+                    <!-- Resumo da venda -->
+                    <div id="saleSummaryBox"
+                        style="background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.2); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                        <div
+                            style="font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+                            ???? Resumo da Venda</div>
+                        <div id="saleSummaryContent"
+                            style="font-size: 13px; color: var(--text-secondary); line-height: 1.8;"></div>
+                    </div>
+
+                    <div class="sale-step-nav">
+                        <button class="btn btn-secondary" style="flex:1;" onclick="goToSaleStep(2)">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </button>
+                        <button class="btn btn-primary" style="flex:1;" onclick="submitSale()" id="saleSubmitBtn">
+                            <i class="fas fa-check"></i> <span id="saleSubmitText">Registrar Venda</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main">
+            <header class="header" role="banner">
+                <div>
+                    <nav class="breadcrumb" id="breadcrumb" aria-label="Localiza&ccedil;&atilde;o atual"></nav>
+                    <h1 class="header-title" id="pageTitle">Empresas</h1>
+                </div>
+                <div class="header-controls">
+                    <button class="btn btn-secondary" onclick="openModal('insightsModal')" data-tooltip="Insights IA"
+                        aria-label="Abrir Insights IA">
+                        <i class="fas fa-lightbulb" aria-hidden="true"></i>
+                        <span class="sr-only">Insights IA</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="openNotificationsModal()" style="position: relative;"
+                        data-tooltip="Notifica&ccedil;&iacute;?es" aria-label="Abrir Notifica&ccedil;&iacute;?es">
+                        <i class="fas fa-bell" aria-hidden="true"></i>
+                        <span id="notificationBadge"
+                            style="position: absolute; top: -6px; right: -6px; background: var(--danger); color: white; border-radius: 50%; width: 18px; height: 18px; display: none; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;"
+                            aria-live="polite"></span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="openModal('settingsModal')"
+                        data-tooltip="Configura&ccedil;&iacute;?es" aria-label="Abrir Configura&ccedil;&iacute;?es">
+                        <i class="fas fa-cog" aria-hidden="true"></i>
+                        <span class="sr-only">Configura&ccedil;&iacute;?es</span>
+                    </button>
+                    <button class="btn btn-primary" id="mainBtn" onclick="showAddModal()"
+                        aria-label="Adicionar novo item">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
+                        <span id="mainBtnText">Nova Empresa</span>
+                    </button>
+                </div>
+            </header>
+
+            <div id="alertContainer" role="alert" aria-live="polite"></div>
+            <main class="content" id="content" role="main" aria-label="Conte&iacute;?do principal"></main>
+        </div>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+
+    <!-- Theme Customizer Panel -->
+    <div id="themePanel"
+        style="position: fixed; top: 90px; right: 20px; width: 320px; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; z-index: 5000; box-shadow: var(--shadow-lg); display: none; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700;">?????? Personalizar Tema</h3>
+            <button onclick="closeThemePanel()"
+                style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Theme Toggle -->
+        <div style="margin-bottom: 20px;">
+            <label
+                style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase;">Modo</label>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="setTheme('dark')" id="themeDarkBtn"
+                    style="flex: 1; padding: 10px; border: 2px solid var(--primary); background: rgba(0, 212, 255, 0.1); color: var(--primary); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+                    ???? Escuro
+                </button>
+                <button onclick="setTheme('light')" id="themeLightBtn"
+                    style="flex: 1; padding: 10px; border: 2px solid var(--border); background: transparent; color: var(--text-secondary); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+                    ?????? Claro
+                </button>
+            </div>
+        </div>
+
+        <!-- Color Customization -->
+        <div style="margin-bottom: 20px;">
+            <label
+                style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase;">Cor
+                Prim&aacute;ria</label>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;">
+                <button onclick="setCustomColor('#00d4ff')"
+                    style="width: 100%; height: 40px; background: #00d4ff; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Cyan"></button>
+                <button onclick="setCustomColor('#1dd1a1')"
+                    style="width: 100%; height: 40px; background: #1dd1a1; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Green"></button>
+                <button onclick="setCustomColor('#a29bfe')"
+                    style="width: 100%; height: 40px; background: #a29bfe; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Purple"></button>
+                <button onclick="setCustomColor('#ff6b6b')"
+                    style="width: 100%; height: 40px; background: #ff6b6b; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Red"></button>
+                <button onclick="setCustomColor('#f59e0b')"
+                    style="width: 100%; height: 40px; background: #f59e0b; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Amber"></button>
+                <button onclick="setCustomColor('#ec4899')"
+                    style="width: 100%; height: 40px; background: #ec4899; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Pink"></button>
+                <button onclick="setCustomColor('#06b6d4')"
+                    style="width: 100%; height: 40px; background: #06b6d4; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Cyan"></button>
+                <button onclick="setCustomColor('#8b5cf6')"
+                    style="width: 100%; height: 40px; background: #8b5cf6; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s;"
+                    title="Violet"></button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="color" id="customColorPicker" value="#00d4ff"
+                    style="width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer; padding: 0;"
+                    onchange="setCustomColor(this.value)">
+                <span style="font-size: 12px; color: var(--text-tertiary);">Personalizada</span>
+            </div>
+        </div>
+
+        <!-- Contrast -->
+        <div style="margin-bottom: 20px;">
+            <label
+                style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase;">Contraste</label>
+            <input type="range" id="contrastSlider" min="80" max="150" value="100" style="width: 100%; cursor: pointer;"
+                onchange="setContrast(this.value)">
+            <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 5px; text-align: center;"
+                id="contrastValue">100%</div>
+        </div>
+
+        <!-- Reset -->
+        <button onclick="resetTheme()"
+            style="width: 100%; padding: 10px; background: rgba(255, 107, 107, 0.1); color: var(--danger); border: 1px solid var(--danger); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;">
+            ??? Restaurar Padr&atilde;o
+        </button>
+    </div>
+
+    <!-- Bot&atilde;o Flutuante de Troca de Tema -->
+    <button class="theme-floating-btn" id="themeToggleBtn" onclick="toggleTheme()"
+        aria-label="Alternar entre modo escuro e claro" title="Alternar tema">
+        <svg class="icon icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <svg class="icon icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+    </button>
+
+</body>
+
+</html>
